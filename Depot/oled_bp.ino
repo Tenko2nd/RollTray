@@ -35,25 +35,25 @@ void setup() {
 
 void loop() {
   etat = digitalRead(BP);
+    display.fillScreen(black); 
 
-  display.fillScreen(black); 
 
   if (etat == HIGH) { 
     display.setTextColor(red); 
     display.setCursor(15, 15); 
     display.setTextSize(2);
     display.print("Erreur");
-    delay(500);
+    delay(200);
   } else {
+
     char test[] = {"..."}; //store characters
     display.setTextColor(cyan); //set text color
     display.setCursor(25, 15); //set cursor position (x, y)
     display.setTextSize(2); //set the size of text
     for (int i = 0; i < 4; i++) {
       display.print(test[i]);
-      delay(500);
+      delay(200);
     }
   }
 
-  delay(100); 
 }
