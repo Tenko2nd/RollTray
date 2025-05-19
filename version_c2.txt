@@ -1,2 +1,2 @@
 1.0.2
-https://www.dropbox.com/scl/fi/ol7tu3utkqrpocww052x2/firmware_c2.bin?dl=1
+https://raw.githubusercontent.com/Tenko2nd/RollTray/carte2/firmware_binaries/firmware_c2.bin
