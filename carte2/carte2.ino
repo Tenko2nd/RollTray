@@ -9,7 +9,15 @@ bool ledState = HIGH;
 
 void setup() {
   Serial.begin(115200);
-  Serial.print("\n\nDemarrage Carte 2 - Version "); Serial.println(currentFirmwareVersion_OTA);
+  unsigned long startTime = millis();
+  const unsigned long timeout = 5000;
+
+  while (!Serial && (millis() - startTime < timeout)) {
+    delay(10);
+  }
+
+
+  Serial.print("Demarrage Carte 2 - Version "); Serial.println(currentFirmwareVersion_OTA);
 
 
   pinMode(testLedPin, OUTPUT);

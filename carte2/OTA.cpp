@@ -6,7 +6,7 @@
 const char* versionInfoUrl = "https://raw.githubusercontent.com/Tenko2nd/RollTray/carte2/version_c2.txt";
 
 // Version actuelle du firmware compilée dans ce sketch
-const char* currentFirmwareVersion_OTA = "0.0.1"; 
+const char* currentFirmwareVersion_OTA = "0.0.2"; 
 
 // --- Certificat Racine PEM pour raw.githubusercontent.com ---
 const char* github_raw_root_ca_pem_OTA = \
