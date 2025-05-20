@@ -3,16 +3,23 @@
 int old_card = -1;
 unsigned long lastTriggerTimeError = 0;
 
+
+const int testLedPin = A7;
+bool ledState = HIGH;
+
 void setup() {
   Serial.begin(115200);
+  Serial.print("\n\nDemarrage Carte 2 - Version "); Serial.println(currentFirmwareVersion_OTA);
+
+
+  pinMode(testLedPin, OUTPUT);
+  digitalWrite(testLedPin, ledState);
+
   unsigned long serialStartTime = millis();
   while (!Serial && (millis() - serialStartTime < 3000)) {
       delay(10);
   }
-  Serial.println("\n\nDemarrage Carte 2");
 
-  // Charger la configuration MQTT existante AVANT de démarrer WiFiManager
-  // pour que WiFiManager puisse afficher les valeurs actuelles dans le portail.
   loadMqttConfig(); // CHARGER LA CONFIG ICI
 
   setupWifiManager(); // Gère la connexion WiFi et peut mettre à jour mqtt_server/mqtt_port_str
@@ -21,6 +28,8 @@ void setup() {
     Serial.print("Adresse IP: ");
     Serial.println(WiFi.localIP());
     
+    handleOTAUpdates();
+
     // Convertir mqtt_port_str en entier pour client.setServer
     int port_int = atoi(mqtt_port_str); 
     if (port_int == 0 && strcmp(mqtt_port_str, "0") != 0) { // strcmp pour le cas où "0" est un port valide (peu probable)
@@ -73,7 +82,7 @@ void loop() {
   }else if (value_buzzer == 2) { // Content bien arrivé
     playArrivalMelody(BUZZ_PIN);
     value_buzzer = 0;
-  }
+  }else if (value_buzzer == 3) old_card = -1; // Musique à venir
 
   int currentButtonState; // This will be filled by the function
   if (didButtonStateChange(currentButtonState)) {
