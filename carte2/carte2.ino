@@ -9,20 +9,36 @@ void setup() {
   while (!Serial && (millis() - serialStartTime < 3000)) {
       delay(10);
   }
-  
-  setupWifiManager();
+  Serial.println("\n\nDemarrage Carte 2");
+
+  // Charger la configuration MQTT existante AVANT de démarrer WiFiManager
+  // pour que WiFiManager puisse afficher les valeurs actuelles dans le portail.
+  loadMqttConfig(); // CHARGER LA CONFIG ICI
+
+  setupWifiManager(); // Gère la connexion WiFi et peut mettre à jour mqtt_server/mqtt_port_str
 
   if (WiFi.isConnected()) {
     Serial.print("Adresse IP: ");
     Serial.println(WiFi.localIP());
-    int port = atoi(mqtt_port); // Convertir la chaîne du port en entier
-    if (port == 0) port = 1883; // Valeur par défaut si la conversion échoue
-    client.setServer(mqtt_server, port);
+    
+    // Convertir mqtt_port_str en entier pour client.setServer
+    int port_int = atoi(mqtt_port_str); 
+    if (port_int == 0 && strcmp(mqtt_port_str, "0") != 0) { // strcmp pour le cas où "0" est un port valide (peu probable)
+      Serial.print("Conversion du port MQTT invalide: '"); Serial.print(mqtt_port_str); Serial.println("'. Utilisation de 1883 par défaut.");
+      port_int = 1883; 
+    } else if (port_int == 0) {
+        Serial.println("Port MQTT est 0, utilisation de 1883 par défaut.");
+        port_int = 1883;
+    }
+    
+    Serial.print("Configuration du client MQTT avec Serveur: "); Serial.print(mqtt_server);
+    Serial.print(", Port: "); Serial.println(port_int);
+    
+    client.setServer(mqtt_server, port_int);
     client.setCallback(callbackMqtt);
   } else {
     Serial.println("Pas connecté au WiFi après WiFiManager. Ne peut pas configurer MQTT.");
-    // L'ESP devrait avoir redémarré ou être bloqué si autoConnect a échoué après timeout.
-  }
+  } 
 
   SPI.begin(); // Initialise le bus SPI
   rfid.PCD_Init(); // Initialise le lecteur MFRC522
@@ -30,13 +46,21 @@ void setup() {
   setupButton(BTN_PIN, 5);
   
   pinMode(BUZZ_PIN, OUTPUT); 
+  Serial.println("Setup terminé.");
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
+  if (WiFi.isConnected()) {
+    if (!client.connected()) {
+      reconnect();
+    }
+    if (client.connected()){
+        client.loop();
+    }
+  } else {
+    Serial.println("WiFi déconnecté dans loop(). Tentative de reconnexion WiFi...");
+    delay(5000);
   }
-  client.loop();
 
   now = millis();
 
