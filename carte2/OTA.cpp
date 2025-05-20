@@ -1,4 +1,3 @@
-// OTA.cpp
 #include "OTA.h"
 
 // --- Configuration Spécifique à l'OTA ---
@@ -46,11 +45,12 @@ const char* github_raw_root_ca_pem_OTA = \
 "-----END CERTIFICATE-----";
 
 
-// Fonction interne pour effectuer la mise à jour, appelée par handleOTAUpdates
+// Fonction internes
+
+// Réalise la MAJ OTA
 void performFirmwareUpdate_OTA(String firmwareDownloadUrl) {
     WiFiClientSecure clientSecure;
     clientSecure.setCACert(github_raw_root_ca_pem_OTA);
-    // Pour débogage extrême seulement : clientSecure.setInsecure();
 
     HTTPClient http;
 
@@ -105,9 +105,8 @@ void performFirmwareUpdate_OTA(String firmwareDownloadUrl) {
     }
 }
 
-// Fonction principale exposée via OTA.h
+// Fonction principale
 void handleOTAUpdates() {
-    // S'assurer que le WiFi est connecté avant de tenter quoi que ce soit
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("(OTA) WiFi non connecté. Impossible de vérifier les mises à jour.");
         return;
@@ -119,7 +118,6 @@ void handleOTAUpdates() {
 
     WiFiClientSecure clientSecure;
     clientSecure.setCACert(github_raw_root_ca_pem_OTA);
-    // Pour débogage extrême seulement : clientSecure.setInsecure();
 
     HTTPClient http;
 

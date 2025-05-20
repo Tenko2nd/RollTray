@@ -1,7 +1,7 @@
 #include "iot.h" // This MUST be included to link declarations with definitions
 
-// --- DEFINITIONS of ALL Global Variables and Objects ---
-
+// --- DEFINITIONS DES VARIABLES ---
+// MQTT
 char mqtt_server[40] = "";
 char mqtt_port_str[6] = "";
 const char* mqtt_card_topic = "RollTray/topic/cards";
@@ -28,17 +28,22 @@ int value_buzzer = -1;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-bool shouldSaveConfig = false;
-const char *mqttConfigFilePath = "/mqtt_config.json";
+// Variables internes
+bool shouldSaveConfig = false; // Sauvegarde configuration WIFI / MQTT
+const char *mqttConfigFilePath = "/mqtt_config.json"; // Fichier littleFS Configuration MQTT
 
 int mqtt_connection_attempts = 0;
 const int MAX_MQTT_ATTEMPTS = 5; // Nombre maximal d'essais avant de forcer le portail
 bool force_config_portal = false;
+// Définition des variables .noinit
+uint8_t noinit_force_portal_flag;
+uint32_t noinit_first_run_check;
+const uint32_t NOINIT_FIRST_RUN_VALUE = 0xCAFEBABE;
 
 // --- Function DEFINITIONS ---
 // Fonction pour charger la configuration MQTT depuis LittleFS
 void loadMqttConfig() {
-  if (!LittleFS.begin(true)) { // true pour formater si échec du montage
+  if (!LittleFS.begin(true)) {
     Serial.println("Erreur montage LittleFS pour chargement config.");
     return;
   }
@@ -49,15 +54,15 @@ void loadMqttConfig() {
     Serial.println(mqttConfigFilePath);
     File configFile = LittleFS.open(mqttConfigFilePath, "r");
     if (configFile) {
-      StaticJsonDocument<256> doc; // Ajustez la taille si vous ajoutez plus de paramètres
+      StaticJsonDocument<256> doc;
       DeserializationError error = deserializeJson(doc, configFile);
       if (error) {
         Serial.print(F("deserializeJson() a échoué: "));
         Serial.println(error.c_str());
       } else {
-        // Utiliser des valeurs par défaut si les clés n'existent pas dans le JSON
-        strlcpy(mqtt_server, doc["mqtt_server"] | "192.168.1.100", sizeof(mqtt_server));
-        strlcpy(mqtt_port_str, doc["mqtt_port_str"] | "1883", sizeof(mqtt_port_str)); // Notez le _str
+        // Utiliser des valeurs nulles si les clefs n'existent pas dans le JSON
+        strlcpy(mqtt_server, doc["mqtt_server"] | "", sizeof(mqtt_server));
+        strlcpy(mqtt_port_str, doc["mqtt_port_str"] | "", sizeof(mqtt_port_str));
         Serial.println("Configuration MQTT chargée depuis JSON.");
       }
       configFile.close();
@@ -65,11 +70,8 @@ void loadMqttConfig() {
       Serial.println("Erreur ouverture fichier config (lecture).");
     }
   } else {
-    Serial.println("Fichier de configuration MQTT non trouvé. Utilisation des valeurs par défaut et sauvegarde.");
-    // Si le fichier n'existe pas, sauvegardons les valeurs par défaut actuelles
-    saveMqttConfig(); 
+    Serial.println("Fichier de configuration MQTT non trouvé.");
   }
-  // LittleFS.end(); // Pas besoin de fermer ici si on va peut-être le réutiliser rapidement
   Serial.print("Serveur MQTT chargé: "); Serial.println(mqtt_server);
   Serial.print("Port MQTT chargé: "); Serial.println(mqtt_port_str);
 }
@@ -83,7 +85,7 @@ void saveMqttConfig() {
   Serial.print("Sauvegarde de la configuration MQTT..."); Serial.print(mqtt_server); Serial.print(mqtt_port_str);
   StaticJsonDocument<256> doc;
   doc["mqtt_server"] = mqtt_server;
-  doc["mqtt_port_str"] = mqtt_port_str; // Notez le _str
+  doc["mqtt_port_str"] = mqtt_port_str;
 
   File configFile = LittleFS.open(mqttConfigFilePath, "w");
   if (!configFile) {
@@ -97,40 +99,33 @@ void saveMqttConfig() {
     Serial.print("Configuration MQTT sauvegardée dans "); Serial.println((mqttConfigFilePath));
   }
   configFile.close();
-  // LittleFS.end(); // Peut être fermé si on n'en a plus besoin immédiatement
 }
 
 void saveConfigCallback () {
   Serial.println("Callback WiFiManager: Connexion WiFi établie.");
-  shouldSaveConfig = true; // Mettre le drapeau pour sauvegarder
+  shouldSaveConfig = true;
 }
 
 void setupWifiManager() {
   WiFiManager wm;
-  // wm.resetSettings(); // Pour tests seulement
+  // wm.resetSettings();
 
   if (force_config_portal) {
     Serial.println("Forçage du portail de configuration WiFiManager à cause d'échecs MQTT.");
-    // Vous pouvez choisir un nom d'AP différent pour indiquer que c'est une re-configuration
-    wm.setConfigPortalTimeout(300); // Timeout plus long pour la reconfiguration
+    wm.setConfigPortalTimeout(300);
     if (!wm.startConfigPortal("ESP32-ReConfig-MQTT", "password123")) {
         Serial.println("Portail de configuration forcé a expiré ou a échoué. Redémarrage.");
         delay(3000);
         ESP.restart();
     }
-    // Si l'utilisateur configure et sauvegarde, autoConnect sera appelé implicitement
-    // ou la connexion sera établie, et les nouveaux paramètres seront disponibles.
-    // On réinitialise le drapeau après une tentative de portail
     force_config_portal = false; 
   }
 
   wm.setSaveConfigCallback(saveConfigCallback);
   wm.setConfigPortalTimeout(180);
 
-  // Important: Passer les variables CHAR ARRAY à WiFiManagerParameter
-  // elles seront remplies avec les valeurs du portail si l'utilisateur les modifie.
   WiFiManagerParameter custom_mqtt_server("server", "Serveur MQTT", mqtt_server, 40);
-  WiFiManagerParameter custom_mqtt_port("port", "Port MQTT", mqtt_port_str, 6); // Utiliser mqtt_port_str
+  WiFiManagerParameter custom_mqtt_port("port", "Port MQTT", mqtt_port_str, 6);
 
   wm.addParameter(&custom_mqtt_server);
   wm.addParameter(&custom_mqtt_port);
@@ -150,7 +145,6 @@ void setupWifiManager() {
     Serial.print("Serveur: "); Serial.println(mqtt_server);
     Serial.print("Port: "); Serial.println(mqtt_port_str);
 
-    // Si le callback a été appelé (nouvelle config WiFi ou paramètres MQTT modifiés)
     if (shouldSaveConfig) {
       saveMqttConfig();
       shouldSaveConfig = false;
@@ -168,6 +162,7 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
     message += (char)payload[i];
   }
   Serial.println(message);
+  // Reception des ACK pour QoS1
   if (String(topic) == mqtt_confirm_card_topic) {
     StaticJsonDocument<100> doc;
     DeserializationError error = deserializeJson(doc, message);
@@ -211,12 +206,12 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
     int id_buzzer = doc["id_buzzer"];
     value_buzzer = doc["value_buzzer"];
 
-    Serial.print("Message ID button : ");
+    Serial.print("Message ID buzzer : ");
     Serial.println(id_buzzer);
-    Serial.print("Valeur bouton button: ");
+    Serial.print("Valeur buzzer: ");
     Serial.println(value_buzzer);
 
-  // Envoi de la confirmation à l'autre code
+  // Envoi de la confirmation à l'autre code pour QoS1
     StaticJsonDocument<50> confirm_msg_buzzer;
     confirm_msg_buzzer["id"] = id_buzzer;
     char msgBuffer_buzzer[50];
@@ -249,8 +244,8 @@ void reconnect() {
       client.subscribe(mqtt_confirm_card_topic);
       client.subscribe(mqtt_confirm_btn_topic);
       client.subscribe(mqtt_buzzer_topic);
-      mqtt_connection_attempts = 0; // Réinitialiser les tentatives en cas de succès
-      return; // Sortir de la fonction si connecté
+      mqtt_connection_attempts = 0;
+      return;
     } else {
       Serial.print("échec, rc=");
       Serial.print(client.state());
@@ -260,15 +255,13 @@ void reconnect() {
     }
   }
 
-  // Si on sort de la boucle while, c'est soit qu'on est connecté (improbable à cause du return),
-  // soit qu'on a dépassé le nombre MAX_MQTT_ATTEMPTS
   if (!client.connected() && mqtt_connection_attempts >= MAX_MQTT_ATTEMPTS) {
     Serial.println("Nombre maximal de tentatives de connexion MQTT atteint.");
     Serial.println("Déclenchement du portail de configuration au prochain redémarrage.");
-    force_config_portal = true; // Mettre le drapeau
+    noinit_force_portal_flag = 1;
 
     Serial.println("Redémarrage pour activer le portail de configuration...");
     delay(1000);
-    ESP.restart(); // Redémarrer pour que setup() puisse vérifier force_config_portal
+    ESP.restart();
   }
 }

@@ -1,34 +1,40 @@
 #include "carte2.h"
 
 int old_card = -1;
+unsigned long scan_time = 0;
 unsigned long lastTriggerTimeError = 0;
-
-
-const int testLedPin = A7;
-bool ledState = HIGH;
 
 void setup() {
   Serial.begin(115200);
-  unsigned long startTime = millis();
-  const unsigned long timeout = 5000;
-
-  while (!Serial && (millis() - startTime < timeout)) {
-    delay(10);
-  }
-
-
-  Serial.print("Demarrage Carte 2 - Version "); Serial.println(currentFirmwareVersion_OTA);
-
-
-  pinMode(testLedPin, OUTPUT);
-  digitalWrite(testLedPin, ledState);
-
+  
+  // attend l'initialisation de serial
   unsigned long serialStartTime = millis();
   while (!Serial && (millis() - serialStartTime < 3000)) {
       delay(10);
   }
 
-  loadMqttConfig(); // CHARGER LA CONFIG ICI
+  Serial.print("Demarrage Carte 2 - Version "); Serial.println(currentFirmwareVersion_OTA);
+
+  // --- Vérifier et gérer le flag .noinit ---
+  if (noinit_first_run_check != NOINIT_FIRST_RUN_VALUE) {
+    Serial.println("Premier demarrage a froid detecte (ou memoire .noinit corrompue). Initialisation des flags .noinit.");
+    noinit_force_portal_flag = 0;
+    noinit_first_run_check = NOINIT_FIRST_RUN_VALUE;
+    force_config_portal = false;
+  } else {
+    Serial.print("Demarrage apres un reset logiciel. Valeur de noinit_force_portal_flag: ");
+    Serial.println(noinit_force_portal_flag);
+    if (noinit_force_portal_flag == 1) {
+      Serial.println("Flag .noinit 'force_portal' detecte. Forcage du portail de configuration.");
+      force_config_portal = true;
+      noinit_force_portal_flag = 0;
+    } else {
+      Serial.println("Pas de flag .noinit de forcage detecte. Connexion normale.");
+      force_config_portal = false;
+    }
+  }
+
+  loadMqttConfig();
 
   setupWifiManager(); // Gère la connexion WiFi et peut mettre à jour mqtt_server/mqtt_port_str
 
@@ -36,11 +42,11 @@ void setup() {
     Serial.print("Adresse IP: ");
     Serial.println(WiFi.localIP());
     
-    handleOTAUpdates();
+    handleOTAUpdates(); // gère OTA update
 
     // Convertir mqtt_port_str en entier pour client.setServer
     int port_int = atoi(mqtt_port_str); 
-    if (port_int == 0 && strcmp(mqtt_port_str, "0") != 0) { // strcmp pour le cas où "0" est un port valide (peu probable)
+    if (port_int == 0 && strcmp(mqtt_port_str, "0") != 0) {
       Serial.print("Conversion du port MQTT invalide: '"); Serial.print(mqtt_port_str); Serial.println("'. Utilisation de 1883 par défaut.");
       port_int = 1883; 
     } else if (port_int == 0) {
@@ -57,8 +63,8 @@ void setup() {
     Serial.println("Pas connecté au WiFi après WiFiManager. Ne peut pas configurer MQTT.");
   } 
 
-  SPI.begin(); // Initialise le bus SPI
-  rfid.PCD_Init(); // Initialise le lecteur MFRC522
+  SPI.begin();
+  rfid.PCD_Init();
 
   setupButton(BTN_PIN, 5);
   
@@ -88,17 +94,20 @@ void loop() {
     playErrorLoopSegment(BUZZ_PIN);
     lastTriggerTimeError = millis();
   }else if (value_buzzer == 2) { // Content bien arrivé
+    if (old_card == 0) old_card = -1;
     playArrivalMelody(BUZZ_PIN);
     value_buzzer = 0;
-  }else if (value_buzzer == 3) old_card = -1; // Musique à venir
+  }else if (value_buzzer == 3) old_card = -1; // Fin de calibration (Musique à venir)
 
-  int currentButtonState; // This will be filled by the function
+  // vérification changement état de bouton
+  int currentButtonState;
   if (didButtonStateChange(currentButtonState)) {
     waitingForBtnAck=true;
     btnCount = 0;
     BtnMsgId++;
   }
 
+  // vérification changement de carte
   int card_num = read_card();
   if (card_num != -1 && old_card!=card_num) 
   {
@@ -106,14 +115,17 @@ void loop() {
     old_card = card_num;
     waitingForCardAck = true;
     cardCount = 0;
+    scan_time = millis();
     CardMsgId++;
   }
 
+  // Regarde si il y a des messages a envoyer tous les resendInterval ms
   if (now - lastSendTime > resendInterval){
-    if (waitingForCardAck && cardCount<=10){
+    if (waitingForCardAck && cardCount<=10){ // Message carte
       StaticJsonDocument<100> doc;
       doc["id_card"] = CardMsgId;
       doc["value_card"] = old_card;
+      doc["scan_time"] = scan_time;
       char msgBuffer[100];
       serializeJson(doc, msgBuffer);
       bool success = client.publish(mqtt_card_topic, msgBuffer);
@@ -125,7 +137,7 @@ void loop() {
       lastSendTime = now;
       cardCount++;
     }
-    if (waitingForBtnAck && btnCount <= 10){
+    if (waitingForBtnAck && btnCount <= 10){ // Message bouton
       StaticJsonDocument<100> doc;
       doc["id_button"] = BtnMsgId;
       doc["value_button"] = currentButtonState;

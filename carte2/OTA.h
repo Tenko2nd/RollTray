@@ -1,4 +1,3 @@
-// OTA.h
 #ifndef OTA_H
 #define OTA_H
 
@@ -10,12 +9,9 @@
 
 extern const char* currentFirmwareVersion_OTA;
 
-// Déclaration de la fonction principale pour vérifier et potentiellement lancer une OTA
-// Cette fonction sera appelée depuis votre setup() ou loop() principal.
+/**
+ * @brief Fonction principale pour gérer les mises à jour OTA
+ */
 void handleOTAUpdates();
-
-// Optionnel: Une fonction pour initialiser les aspects OTA si nécessaire
-// (par exemple, si vous voulez séparer l'initialisation de la vérification)
-// void setupOTA(); // Pour l'instant, on peut tout mettre dans handleOTAUpdates ou l'appeler depuis là
 
 #endif // OTA_H
