@@ -1,0 +1,2 @@
+0.0.2
+https://raw.githubusercontent.com/Tenko2nd/RollTray/carte2/firmware_binaries/firmware_c2.bin
