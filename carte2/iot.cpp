@@ -110,17 +110,6 @@ void setupWifiManager() {
   WiFiManager wm;
   // wm.resetSettings();
 
-  if (force_config_portal) {
-    Serial.println("Forçage du portail de configuration WiFiManager à cause d'échecs MQTT.");
-    wm.setConfigPortalTimeout(300);
-    if (!wm.startConfigPortal("ESP32-ReConfig-MQTT", "password123")) {
-        Serial.println("Portail de configuration forcé a expiré ou a échoué. Redémarrage.");
-        delay(3000);
-        ESP.restart();
-    }
-    force_config_portal = false; 
-  }
-
   wm.setSaveConfigCallback(saveConfigCallback);
   wm.setConfigPortalTimeout(180);
 
@@ -130,24 +119,55 @@ void setupWifiManager() {
   wm.addParameter(&custom_mqtt_server);
   wm.addParameter(&custom_mqtt_port);
 
-  String apName = "ESP32-Nano-Config-" + String(WiFi.macAddress());
-  if (!wm.autoConnect(apName.c_str(), "password123")) {
-    Serial.println("Échec de la connexion WiFiManager et timeout.");
-    delay(3000);
-    ESP.restart();
-  } else {
-    Serial.println("Connecté au WiFi via WiFiManager!");
-
-    strcpy(mqtt_server, custom_mqtt_server.getValue());
-    strcpy(mqtt_port_str, custom_mqtt_port.getValue());
-
-    Serial.println("Paramètres MQTT récupérés du portail:");
-    Serial.print("Serveur: "); Serial.println(mqtt_server);
-    Serial.print("Port: "); Serial.println(mqtt_port_str);
-
-    if (shouldSaveConfig) {
-      saveMqttConfig();
-      shouldSaveConfig = false;
+  if (force_config_portal) {
+    Serial.println("Forçage du portail de configuration WiFiManager à cause d'échecs MQTT.");
+    String apName = "ESP32-NReconfig-MQTT-" + String(WiFi.macAddress());  // Nom unique pour l'AP
+    if (!wm.startConfigPortal(apName.c_str(), "password123")) {              // "password123" est le mot de passe de l'AP de config
+      Serial.println("Échec de la connexion et timeout du portail de config atteint.");
+      Serial.println("Redémarrage...");
+      delay(3000);
+      ESP.restart();  // Redémarre si le portail a expiré sans connexion
+    } else {
+      Serial.println("Connecté au WiFi!");
+ 
+      strcpy(mqtt_server, custom_mqtt_server.getValue());
+      strcpy(mqtt_port_str, custom_mqtt_port.getValue());
+ 
+      Serial.println("Paramètres MQTT récupérés du portail:");
+      Serial.print("Serveur: ");
+      Serial.println(mqtt_server);
+      Serial.print("Port: ");
+      Serial.println(mqtt_port_str);
+ 
+      if (shouldSaveConfig) {
+        saveMqttConfig();
+        shouldSaveConfig = false;
+      }
+    }
+    force_config_portal = false;
+  }else {
+    String apName = "ESP32-Nano-Config-" + String(WiFi.macAddress());  // Nom unique pour l'AP
+    if (!wm.autoConnect(apName.c_str(), "password123")) {              // "password123" est le mot de passe de l'AP de config
+      Serial.println("Échec de la connexion et timeout du portail de config atteint.");
+      Serial.println("Redémarrage...");
+      delay(3000);
+      ESP.restart();  // Redémarre si le portail a expiré sans connexion
+    } else {
+      Serial.println("Connecté au WiFi!");
+ 
+      strcpy(mqtt_server, custom_mqtt_server.getValue());
+      strcpy(mqtt_port_str, custom_mqtt_port.getValue());
+ 
+      Serial.println("Paramètres MQTT récupérés du portail:");
+      Serial.print("Serveur: ");
+      Serial.println(mqtt_server);
+      Serial.print("Port: ");
+      Serial.println(mqtt_port_str);
+ 
+      if (shouldSaveConfig) {
+        saveMqttConfig();
+        shouldSaveConfig = false;
+      }
     }
   }
 }
