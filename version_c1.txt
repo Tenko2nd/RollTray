@@ -1,2 +1,2 @@
 0.0.2
-https://raw.githubusercontent.com/Tenko2nd/RollTray/carte2/firmware_binaries/firmware_c1.bin
+https://raw.githubusercontent.com/Tenko2nd/RollTray/main/firmware_binaries/firmware_c1.bin
