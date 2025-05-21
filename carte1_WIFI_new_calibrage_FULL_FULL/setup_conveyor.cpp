@@ -12,7 +12,7 @@ bool attenteNouvelleCarte0 = false;
 
 bool bascule_etat_0 = false;
 
-const unsigned long TEMPS_MAX_CALIBRAGE = 20000;
+const unsigned long TEMPS_MAX_CALIBRAGE = 10000;
 unsigned long temps_debut_calibrage = 0;
 
 unsigned long t0 = 0;
