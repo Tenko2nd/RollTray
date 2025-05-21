@@ -10,7 +10,7 @@
 #define NOTE_D4  294
 #define NOTE_E4  330
 #define NOTE_F4  349
-#define NOTE_FS4 370  // Fa# / Solb
+#define NOTE_FS4 370
 #define NOTE_G4  392
 #define NOTE_A4  440
 #define NOTE_B4  494
@@ -21,33 +21,38 @@
 #define NOTE_G5  784
 
 /**
- * @brief Initializes the debounced button. Call this in your main setup().
- * @param pin The Arduino pin the button is connected to.
- * @param samplesForChange The number of consecutive identical readings required to confirm a state change.
+ * @brief Initialise Le bouton poussoir debounced. call in setup
+ * @param pin Le pin du bouton poussoir
+ * @param samplesForChange nombre de lecture de valeur consécutive pour définir un nouvel état. Defaut 5.
  */
 void setupButton(int pin, int samplesForChange = 5);
 
 /**
- * @brief Updates the internal state of the debounced button. Call this regularly in your main loop().
+ * @brief met a jour l'état du bouton. call in loop
  */
 void updateButtonState();
 
 /**
- * @brief Checks if the debounced button state has changed since the last call to this function.
- * @param newState (Output parameter) If the state changed, this will be populated with the new debounced button state (HIGH or LOW).
- * @return True if the state has changed, false otherwise.
+ * @brief Regarde si la valeur du bouton à changer
+ * @param newState Le nouvel état du bouton
+ * @return True si il a changer, false sinon 
  */
 bool didButtonStateChange(int& newState);
 
 /**
- * @brief Gets the current debounced state of the button without affecting the change flag.
- * @return The current debounced button state (HIGH or LOW).
+ * @brief Récupère l'état actuel du bouton
+ * @return L'état du bouton actuel
  */
 int getCurrentButtonState();
 
-// Déclaration de la fonction pour jouer la mélodie d'arrivée
+/**
+ * @brief Mélodie d'arriver du convoyeur à la carte
+ */
 void playArrivalMelody(int buzzerPin);
 
+/**
+ * @brief Mélodie d'erreur de la commande
+ */
 void playErrorLoopSegment(int buzzerPin);
 
 #endif // BUTTONNBUZZER_H

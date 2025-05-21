@@ -9,14 +9,6 @@ byte knownUID3[] = {0x94, 0x67, 0x8F, 0x28}; //  UID carte 3
 byte knownUIDfin[] = {0xB4, 0x20, 0xAD, 0x28}; //  UID carte -2
 byte UID_SIZE = 4;
 
-/**
- * Fonction pour comparer deux UID.
- * Prend en compte la taille des UID pour éviter les erreurs.
- * @param uid1 Premier UID (tableau d'octets)
- * @param uid2 Deuxième UID (tableau d'octets)
- * @param size Taille réelle de l'UID lu (fournie par rfid.uid.size)
- * @return true si les UID sont identiques ET ont la taille attendue (UID_SIZE), false sinon.
- */
 bool compareUID(byte uid1[], byte uid2[], byte size) {
   if (size != UID_SIZE) {
     return false;
@@ -28,15 +20,9 @@ bool compareUID(byte uid1[], byte uid2[], byte size) {
       return false;
     }
   }
-  // Si on arrive ici, tous les octets sont identiques et la taille correspond
   return true;
 }
 
-/**
- * Fonction utilitaire pour afficher un UID sur le port série en HEX.
- * @param uid L'UID à afficher (tableau d'octets)
- * @param size La taille de l'UID
- */
 void printUID(byte uid[], byte size) {
   for (byte i = 0; i < size; i++) {
     Serial.print(uid[i] < 0x10 ? " 0" : " "); // Ajoute un 0 devant si l'octet est < 16 (0x10)
@@ -45,12 +31,10 @@ void printUID(byte uid[], byte size) {
 }
 
 int read_card(){
-  // Cherche une nouvelle carte
   if (rfid.PICC_IsNewCardPresent()) {
-    // Tente de lire l'UID de la carte
     if (rfid.PICC_ReadCardSerial()) {
       
-      // Affiche l'UID de la carte lue (pour le débogage)
+      // Affiche l'UID de la carte lue
       // Serial.print("UID lu: ");
       // printUID(rfid.uid.uidByte, rfid.uid.size);
       // Serial.println();
@@ -77,9 +61,7 @@ int read_card(){
 
       Serial.println("-----------------------------------------");
 
-      // Arrête la communication avec la carte actuelle
       rfid.PICC_HaltA();
-      // Arrête le chiffrement (si actif)
       rfid.PCD_StopCrypto1();
     }
   }

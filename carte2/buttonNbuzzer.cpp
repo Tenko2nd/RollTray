@@ -1,30 +1,31 @@
 #include "buttonNbuzzer.h"
 
-// --- Internal variables for the debouncer module ---
+// --- Variable interne pour le debounced bouton ---
 
 static int _buttonPin = -1;
-static int _samplesRequiredCfg = 5;
-static unsigned long _sampleIntervalCfg = 20;
+static int _samplesRequiredCfg = 5;        // nombre d'état identique d'affiler pour confirmer un changement
+static unsigned long _sampleIntervalCfg = 20; // temps entre chaque prs de mesure
 
-static int _officialButtonState = HIGH;    // The current confirmed, debounced state
-static int _lastReportedState = HIGH;      // The state that was last reported by didDebouncedButtonStateChange()
+static int _officialButtonState = HIGH;    // L'état actuel du bouton
+static int _lastReportedState = HIGH;      // L'ancien état du bouton
 
-static const int MAX_HISTORY_SIZE = 10;    // Max samples we can store (to size the array)
-static int _readingHistory[MAX_HISTORY_SIZE]; // Stores recent raw physical readings
-static int _historyIndex = 0;              // Current index in the readingHistory array
-static bool _historyFilled = false;        // True once the history buffer has _samplesRequiredCfg readings
+static const int MAX_HISTORY_SIZE = 10;    // nombre maximum de _samplesRequiredCfg
+static int _readingHistory[MAX_HISTORY_SIZE]; // historique des prélèvement d'état
+static int _historyIndex = 0;              // indice de l'_historyIndex
+static bool _historyFilled = false;        // vrai des que le _readingHistory contient au moins _samplesRequiredCfg
 
-static unsigned long _lastSampleTime = 0;  // Timestamp of the last physical read
+static unsigned long _lastSampleTime = 0;  // dernière mesure d'état
 
 // --- Function Definitions ---
 
 void setupButton(int pin, int samplesForChange) {
     _buttonPin = pin;
 
+    // définit _samplesRequiredCfg
     if (samplesForChange <= 0) {
-        _samplesRequiredCfg = 1; // Need at least 1 sample
+        _samplesRequiredCfg = 1;
     } else if (samplesForChange > MAX_HISTORY_SIZE) {
-        _samplesRequiredCfg = MAX_HISTORY_SIZE; // Cap at our array's max
+        _samplesRequiredCfg = MAX_HISTORY_SIZE;
     } else {
         _samplesRequiredCfg = samplesForChange;
     }
@@ -33,53 +34,48 @@ void setupButton(int pin, int samplesForChange) {
     _officialButtonState = digitalRead(_buttonPin);
 
 
-    // Initialize reading history with the current (assumed or read) state
-    int initialReading = digitalRead(_buttonPin); // Read the actual pin state for init
+    // initialise le_readingHistory
+    int initialReading = digitalRead(_buttonPin);
     for (int i = 0; i < _samplesRequiredCfg; i++) {
         _readingHistory[i] = initialReading;
     }
     _officialButtonState = initialReading;
-    _lastReportedState = initialReading; // Ensure no "false change" on first check
+    _lastReportedState = initialReading;
     _historyIndex = 0;
-    _historyFilled = false; // Will become true after enough samples
-    _lastSampleTime = millis(); // Allow first sample to happen soon
+    _historyFilled = false;
+    _lastSampleTime = millis();
 }
 
 void updateButtonState() {
     if (_buttonPin == -1) return; // Not initialized
 
-    // Only sample at the configured interval
     if (millis() - _lastSampleTime >= _sampleIntervalCfg) {
         _lastSampleTime = millis();
 
         int currentPhysicalReading = digitalRead(_buttonPin);
 
-        // Store the current reading in our history array (circular buffer)
         _readingHistory[_historyIndex] = currentPhysicalReading;
         _historyIndex = (_historyIndex + 1) % _samplesRequiredCfg;
 
-        // Mark history as filled once we've gone through the array enough times
+        // l'historique est complet
         if (!_historyFilled && _historyIndex == 0) {
             _historyFilled = true;
         }
 
-        // Only proceed to check for consistency if the history buffer is considered full
         if (_historyFilled) {
             bool allSameInHistory = true;
-            // Assume the first element in current history window is the one to check against
-            // (The oldest reading in the current circular window)
+            // Prend une valeur de comparaison
             int consistentPhysicalState = _readingHistory[(_historyIndex + _samplesRequiredCfg) % _samplesRequiredCfg];
 
-
+            // Regarde s'il y a un différent
             for (int i = 0; i < _samplesRequiredCfg; i++) {
-                 // Check all elements currently in the history window
                 if (_readingHistory[i] != consistentPhysicalState) {
                     allSameInHistory = false;
-                    break; // No need to check further
+                    break;
                 }
             }
             
-            // Change of state
+            // Si encore dans la boucle, changemet d'état
             if (allSameInHistory && (consistentPhysicalState != _officialButtonState)) {
                 _officialButtonState = consistentPhysicalState;
             }
@@ -88,12 +84,12 @@ void updateButtonState() {
 }
 
 bool didButtonStateChange(int& newState) {
-    if (_buttonPin == -1) { // Not initialized
+    if (_buttonPin == -1) {
         newState = digitalRead(_buttonPin);
         return false;
     }
 
-    newState = _officialButtonState; // Always provide the current official state
+    newState = _officialButtonState;
 
     if (_officialButtonState != _lastReportedState) {
         _lastReportedState = _officialButtonState;
@@ -103,7 +99,7 @@ bool didButtonStateChange(int& newState) {
 }
 
 int getCurrentButtonState() {
-    if (_buttonPin == -1) { // Not initialized
+    if (_buttonPin == -1) {
         return digitalRead(_buttonPin);
     }
     return _officialButtonState;
@@ -143,6 +139,7 @@ void playArrivalMelody(int buzzerPin) {
   noTone(buzzerPin);
 }
 
+// Joue la mélodie d'erreur
 void playErrorLoopSegment(int buzzerPin) {
   int error_segment[][2] = {
     {NOTE_G4,  150},
