@@ -70,6 +70,9 @@ void setup() {
   
   pinMode(BUZZ_PIN, OUTPUT); 
   Serial.println("Setup terminé.");
+
+  pinMode(A7, OUTPUT);
+  digitalWrite(A7, HIGH); // pour ma batterie (peut être supprimé) 
 }
 
 void loop() {
